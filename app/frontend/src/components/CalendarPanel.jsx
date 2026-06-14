@@ -170,7 +170,7 @@ function Chip({ active, onClick, children }) {
 function Tile({ label, value, color }) {
   return (
     <div className="px-3 py-1.5 rounded-lg bg-ink-700 border border-ink-600 min-w-[84px]">
-      <div className="text-lg font-semibold tabular-nums" style={{ color }}>{value ?? "–"}</div>
+      <div className="text-lg font-semibold tabular-nums" style={{ color }}>{value ?? "-"}</div>
       <div className="text-[10px] text-slate-500 leading-tight">{label}</div>
     </div>
   );

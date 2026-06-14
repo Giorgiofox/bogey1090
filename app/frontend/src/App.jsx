@@ -176,7 +176,7 @@ export default function App() {
 function Stat({ label, value }) {
   return (
     <span className="flex flex-col leading-tight text-right">
-      <span className="text-slate-200 font-medium tabular-nums">{value ?? "–"}</span>
+      <span className="text-slate-200 font-medium tabular-nums">{value ?? "-"}</span>
       <span className="text-[10px] uppercase tracking-wide text-slate-500">{label}</span>
     </span>
   );

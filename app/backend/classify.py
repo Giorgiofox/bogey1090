@@ -116,7 +116,7 @@ def traffic_class(aircraft: dict, score: int, ac_type: str | None, ac_desc: str 
     if _looks_like_airline(flight):
         return "airline"
     # Large/heavy fixed-wing (ADS-B category A3/A4/A5) is virtually always commercial,
-    # even when the callsign is momentarily missing — keep it out of non-airline.
+    # even when the callsign is momentarily missing - keep it out of non-airline.
     if aircraft.get("category") in {"A3", "A4", "A5"}:
         return "airline"
     return "ga"

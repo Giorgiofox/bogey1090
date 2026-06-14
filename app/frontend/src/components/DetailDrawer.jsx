@@ -4,7 +4,7 @@ import { PlaneIcon, CloseIcon } from "../icons.jsx";
 import { fmtFull, tzName } from "../time.js";
 
 const CATEGORY = {
-  A0: "No info", A1: "Light (<15.5t)", A2: "Small (15.5–75t)", A3: "Large (75–300t)",
+  A0: "No info", A1: "Light (<15.5t)", A2: "Small (15.5-75t)", A3: "Large (75-300t)",
   A4: "High-vortex large", A5: "Heavy (>300t)", A6: "High performance", A7: "Rotorcraft",
   B0: "No info", B1: "Glider / sailplane", B2: "Lighter-than-air", B3: "Parachutist",
   B4: "Ultralight", B6: "UAV / drone", B7: "Space vehicle",
@@ -184,7 +184,7 @@ function Field({ label, value, wide }) {
 function Stat({ label, value }) {
   return (
     <div className="bg-ink-700 rounded-lg py-2">
-      <div className="text-slate-200 font-medium tabular-nums">{value ?? "–"}</div>
+      <div className="text-slate-200 font-medium tabular-nums">{value ?? "-"}</div>
       <div className="text-[10px] uppercase tracking-wide text-slate-500">{label}</div>
     </div>
   );

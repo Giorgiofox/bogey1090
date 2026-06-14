@@ -9,7 +9,7 @@ export function fmtLocal(iso) {
   return iso ? SHORT.format(new Date(iso)) : "";
 }
 export function fmtFull(iso) {
-  return iso ? FULL.format(new Date(iso)) : "–";
+  return iso ? FULL.format(new Date(iso)) : "-";
 }
 export function tzName() {
   try {
