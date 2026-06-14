@@ -1,0 +1,48 @@
+@import "maplibre-gl/dist/maplibre-gl.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #0a0e14;
+  color: #e6edf3;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thin dark scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2b3a4a transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #2b3a4a;
+  border-radius: 8px;
+}
+
+.maplibregl-popup-content {
+  background: #161d27;
+  color: #e6edf3;
+  border: 1px solid #2b3a4a;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.maplibregl-popup-tip {
+  border-top-color: #161d27 !important;
+  border-bottom-color: #161d27 !important;
+}
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-attrib a {
+  background: rgba(10, 14, 20, 0.7) !important;
+  color: #8aa0b3 !important;
+}

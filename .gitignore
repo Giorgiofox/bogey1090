@@ -1,0 +1,19 @@
+# Secrets & local config (contains receiver IP/coords)
+.env
+
+# Data: SQLite DB + tar1090 runtime state
+data/
+
+# Python
+__pycache__/
+*.pyc
+
+# Node / frontend build
+app/frontend/node_modules/
+app/frontend/dist/
+
+# Editors / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/

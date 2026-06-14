@@ -1,0 +1,48 @@
+services:
+  tar1090:
+    image: ghcr.io/sdr-enthusiasts/docker-tar1090:latest
+    container_name: adsb-tar1090
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      BEASTHOST: ${RASPBERRY_BEAST_HOST}
+      BEASTPORT: ${RASPBERRY_BEAST_PORT}
+      LAT: ${RECEIVER_LAT}
+      LONG: ${RECEIVER_LON}
+      READSB_MAX_RANGE: "450"
+      TAR1090_PAGETITLE: ${RECEIVER_NAME}
+      TAR1090_SITESHOW: "true"
+      TAR1090_SITENAME: ${RECEIVER_NAME}
+      TAR1090_ENABLE_AC_DB: "true"
+      TAR1090_FLIGHTAWARELINKS: "true"
+      TAR1090_RANGE_OUTLINE_COLORED_BY_ALTITUDE: "true"
+      TAR1090_RANGE_OUTLINE_WIDTH: "2.0"
+      TAR1090_RANGERINGSDISTANCES: "50,100,150,200"
+      GRAPHS1090_DARKMODE: "true"
+      ENABLE_TIMELAPSE1090: "true"
+    ports:
+      - "8090:80"
+    volumes:
+      - ./data/tar1090/globe_history:/var/globe_history
+      - ./data/tar1090/timelapse1090:/var/timelapse1090
+      - ./data/tar1090/graphs1090:/var/lib/collectd
+    tmpfs:
+      - /run:exec,size=256M
+
+  adsb-logger:
+    build: ./app
+    container_name: adsb-logger
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - tar1090
+    volumes:
+      - ./data:/data
+    ports:
+      - "8095:8080"
+    healthcheck:
+      test: ["CMD", "python", "/app/healthcheck.py"]
+      interval: 30s
+      timeout: 6s
+      retries: 3
+      start_period: 40s
