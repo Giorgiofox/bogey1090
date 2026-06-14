@@ -65,6 +65,14 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.classes, filters.milMin, filters.mlat, filters.watched, filters.from, filters.to]);
 
+  // Live auto-refresh of the results list (not when viewing a fixed time window).
+  useEffect(() => {
+    if (rangeMode) return;
+    const t = setInterval(() => runSearch(filters), 15000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rangeMode, filters.q, filters.classes, filters.milMin, filters.mlat, filters.watched]);
+
   useEffect(() => {
     api.getStatus().then(setStatus).catch(() => {});
     const t = setInterval(() => api.getStatus().then(setStatus).catch(() => {}), 15000);
