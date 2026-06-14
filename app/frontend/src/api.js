@@ -4,29 +4,52 @@ async function get(url) {
   return resp.json();
 }
 
-function filterParams({ q, classes, milMin, mlat }) {
+function filterParams({ q, classes, milMin, mlat, watched }) {
   const p = new URLSearchParams();
   if (q) p.set("q", q);
   (classes || []).forEach((c) => p.append("class", c));
   if (milMin) p.set("mil_min", String(milMin));
   if (mlat) p.set("mlat", "1");
+  if (watched) p.set("watched", "1");
   return p;
+}
+
+export function getWatchlist() {
+  return get("/api/watchlist");
+}
+export async function addWatch(entry) {
+  const r = await fetch("/api/watchlist", {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(entry),
+  });
+  if (!r.ok) throw new Error((await r.json()).error || r.statusText);
+  return r.json();
+}
+export function deleteWatch(id) {
+  return fetch(`/api/watchlist/${id}`, { method: "DELETE" }).then((r) => r.json());
+}
+export function toggleWatch(id, enabled) {
+  return fetch(`/api/watchlist/${id}`, {
+    method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ enabled }),
+  }).then((r) => r.json());
+}
+export function getWatchEvents(limit = 100) {
+  return get(`/api/watch-events?limit=${limit}`);
 }
 
 export function getStatus() {
   return get("/api/status");
 }
 
-export function search({ q, classes, milMin, mlat, from, to, limit = 500 }) {
-  const p = filterParams({ q, classes, milMin, mlat });
+export function search({ q, classes, milMin, mlat, watched, from, to, limit = 500 }) {
+  const p = filterParams({ q, classes, milMin, mlat, watched });
   if (from) p.set("from", from);
   if (to) p.set("to", to);
   p.set("limit", String(limit));
   return get(`/api/search?${p.toString()}`);
 }
 
-export function getTracks({ q, classes, milMin, mlat, from, to }) {
-  const p = filterParams({ q, classes, milMin, mlat });
+export function getTracks({ q, classes, milMin, mlat, watched, from, to }) {
+  const p = filterParams({ q, classes, milMin, mlat, watched });
   if (from) p.set("from", from);
   if (to) p.set("to", to);
   return get(`/api/tracks?${p.toString()}`);

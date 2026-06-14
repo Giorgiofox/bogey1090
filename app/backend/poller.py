@@ -6,7 +6,7 @@ import time
 
 import httpx
 
-from . import classify, config, db, enrich
+from . import classify, config, db, enrich, watch
 
 # Runtime status surfaced via /api/status.
 state = {
@@ -54,6 +54,8 @@ def _persist(source_now, aircraft_list: list[dict]) -> int:
     now = time.time()
     inserted = 0
     con = db.connect()
+    watchlist = watch.load(con)
+    wl_has_op = watch.has_operator_entries(watchlist)
     try:
         for aircraft in aircraft_list:
             hexid = str(aircraft.get("hex") or "").lower().strip()
@@ -62,12 +64,26 @@ def _persist(source_now, aircraft_list: list[dict]) -> int:
             meta = classify.classify(aircraft)
             flight = classify.clean_flight(aircraft.get("flight"))
             raw = json.dumps(aircraft, separators=(",", ":"), sort_keys=True)
+            # Watchlist match (operator needs enrichment, looked up only if needed).
+            operator = None
+            if wl_has_op:
+                op_row = con.execute(
+                    "select coalesce(operator, owner) from aircraft_info where hex=?", (hexid,)
+                ).fetchone()
+                operator = op_row[0] if op_row else None
+            watch_entry = watch.match(watchlist, hexid, meta.reg, flight, meta.ac_type, operator)
+            watched = 1 if watch_entry else 0
+            watch_label = (watch_entry.get("label") or watch_entry.get("value")) if watch_entry else None
+            if watch_entry:
+                watch.maybe_log_event(con, watch_entry, hexid, seen_at, flight,
+                                      aircraft.get("lat"), aircraft.get("lon"))
             con.execute(
                 """insert into sightings (
                   seen_at, source_now, hex, flight, lat, lon, alt_baro, alt_geom, gs, track,
                   squawk, category, rssi, messages, seen, seen_pos, military_score,
-                  military_reasons, reg, ac_type, ac_desc, db_flags, traffic_class, mlat, raw_json
-                ) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                  military_reasons, reg, ac_type, ac_desc, db_flags, traffic_class, mlat,
+                  watched, watch_label, raw_json
+                ) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     seen_at, source_now, hexid, flight, aircraft.get("lat"), aircraft.get("lon"),
                     classify.as_text(aircraft.get("alt_baro")), aircraft.get("alt_geom"),
@@ -75,15 +91,17 @@ def _persist(source_now, aircraft_list: list[dict]) -> int:
                     classify.as_text(aircraft.get("squawk")), aircraft.get("category"),
                     aircraft.get("rssi"), aircraft.get("messages"), aircraft.get("seen"),
                     aircraft.get("seen_pos"), meta.military_score, meta.military_reasons,
-                    meta.reg, meta.ac_type, meta.ac_desc, meta.db_flags, meta.traffic_class, meta.mlat, raw,
+                    meta.reg, meta.ac_type, meta.ac_desc, meta.db_flags, meta.traffic_class, meta.mlat,
+                    watched, watch_label, raw,
                 ),
             )
             con.execute(
                 """insert into aircraft_state (
                   hex, first_seen_at, last_seen_at, flight, lat, lon, alt_baro, alt_geom,
                   gs, track, squawk, category, rssi, messages, military_score, military_reasons,
-                  reg, ac_type, ac_desc, db_flags, traffic_class, mlat, samples, raw_json
-                ) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?)
+                  reg, ac_type, ac_desc, db_flags, traffic_class, mlat,
+                  watched, watch_label, samples, raw_json
+                ) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?)
                 on conflict(hex) do update set
                   last_seen_at=excluded.last_seen_at,
                   flight=coalesce(excluded.flight, aircraft_state.flight),
@@ -100,6 +118,8 @@ def _persist(source_now, aircraft_list: list[dict]) -> int:
                   db_flags=coalesce(excluded.db_flags, aircraft_state.db_flags),
                   traffic_class=excluded.traffic_class,
                   mlat=excluded.mlat,
+                  watched=excluded.watched,
+                  watch_label=excluded.watch_label,
                   samples=aircraft_state.samples + 1,
                   raw_json=excluded.raw_json""",
                 (
@@ -109,7 +129,7 @@ def _persist(source_now, aircraft_list: list[dict]) -> int:
                     classify.as_text(aircraft.get("squawk")), aircraft.get("category"),
                     aircraft.get("rssi"), aircraft.get("messages"), meta.military_score,
                     meta.military_reasons, meta.reg, meta.ac_type, meta.ac_desc, meta.db_flags,
-                    meta.traffic_class, meta.mlat, raw,
+                    meta.traffic_class, meta.mlat, watched, watch_label, raw,
                 ),
             )
             inserted += 1

@@ -44,7 +44,10 @@ function multiLines(tracks) {
     if (pts.length < 2) return;
     feats.push({
       type: "Feature",
-      properties: { color: classMeta(t.traffic_class).color, hex: t.hex },
+      properties: {
+        color: t.watched ? "#fbbf24" : classMeta(t.traffic_class).color,
+        hex: t.hex, watched: t.watched ? 1 : 0,
+      },
       geometry: { type: "LineString", coordinates: pts.map((p) => [p.lon, p.lat]) },
     });
   });
@@ -91,7 +94,11 @@ export default function MapView({ center, receiver, rings, track, multiTracks, o
       map.current.addLayer({
         id: "multi-line", type: "line", source: "multi",
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-width": 1.6, "line-color": ["get", "color"], "line-opacity": 0.7 },
+        paint: {
+          "line-width": ["case", ["==", ["get", "watched"], 1], 4, 1.6],
+          "line-color": ["get", "color"],
+          "line-opacity": ["case", ["==", ["get", "watched"], 1], 1, 0.7],
+        },
       });
       // Wider invisible hit area so thin tracks are easy to click.
       map.current.addLayer({

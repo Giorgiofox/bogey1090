@@ -3,11 +3,11 @@ import asyncio
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Query
+from fastapi import Body, FastAPI, Query
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import config, db, enrich, poller
+from . import config, db, enrich, poller, watch
 
 _stop = asyncio.Event()
 _poll_task: asyncio.Task | None = None
@@ -65,9 +65,9 @@ async def healthz():
 AI_COLS = ["ai.type", "ai.manufacturer", "ai.icao_type", "ai.operator", "ai.owner"]
 
 
-def _range_where(prefix, q, klass, mil_min, day, frm, to, mlat=0, extra_cols=()):
+def _range_where(prefix, q, klass, mil_min, day, frm, to, mlat=0, extra_cols=(), watched=0):
     """Filter over a sightings/state join for a day or [from,to] time window."""
-    where, params = _filter(prefix, q, klass, mil_min, mlat, extra_cols)
+    where, params = _filter(prefix, q, klass, mil_min, mlat, extra_cols, watched)
     if day:
         where.append("substr(s.seen_at,1,10) = ?")
         params.append(day)
@@ -86,6 +86,7 @@ async def api_search(
     klass: list[str] | None = Query(default=None, alias="class"),
     mil_min: int = 0,
     mlat: int = 0,
+    watched: int = 0,
     day: str | None = None,
     frm: str | None = Query(default=None, alias="from"),
     to: str | None = None,
@@ -95,30 +96,32 @@ async def api_search(
     if day or frm or to:
         # Aircraft seen in the window; class/identity from authoritative aircraft_state,
         # timing/counts from that window's sightings. Filters apply to the state class.
-        where, params = _range_where("st.", q, klass, mil_min, day, frm, to, mlat, AI_COLS)
+        where, params = _range_where("st.", q, klass, mil_min, day, frm, to, mlat, AI_COLS, watched)
         clause = " where " + " and ".join(where)
         return db.query_rows(
             f"""select s.hex, st.flight, st.reg, st.ac_type, st.ac_desc, st.traffic_class,
                        st.military_score, st.military_reasons, st.db_flags, st.mlat,
+                       st.watched, st.watch_label,
                        max(s.lat) as lat, max(s.lon) as lon, max(s.alt_baro) as alt_baro,
                        max(s.gs) as gs, max(s.squawk) as squawk, max(s.category) as category,
                        min(s.seen_at) as first_seen_at, max(s.seen_at) as last_seen_at,
                        count(*) as samples
                 from sightings s join aircraft_state st on st.hex = s.hex
                   left join aircraft_info ai on ai.hex = s.hex{clause}
-                group by s.hex order by last_seen_at desc limit ?""",
+                group by s.hex order by st.watched desc, last_seen_at desc limit ?""",
             tuple(params) + (limit,),
         )
     # Default: latest state per aircraft.
-    where, params = _filter("st.", q, klass, mil_min, mlat, AI_COLS)
+    where, params = _filter("st.", q, klass, mil_min, mlat, AI_COLS, watched)
     clause = (" where " + " and ".join(where)) if where else ""
     return db.query_rows(
         f"""select st.hex, st.flight, st.reg, st.ac_type, st.ac_desc, st.traffic_class,
-                  st.military_score, st.military_reasons, st.db_flags, st.mlat, st.lat, st.lon,
+                  st.military_score, st.military_reasons, st.db_flags, st.mlat,
+                  st.watched, st.watch_label, st.lat, st.lon,
                   st.alt_baro, st.gs, st.squawk, st.category,
                   st.first_seen_at, st.last_seen_at, st.samples
            from aircraft_state st left join aircraft_info ai on ai.hex = st.hex{clause}
-           order by st.last_seen_at desc limit ?""",
+           order by st.watched desc, st.last_seen_at desc limit ?""",
         tuple(params) + (limit,),
     )
 
@@ -129,6 +132,7 @@ async def api_tracks(
     klass: list[str] | None = Query(default=None, alias="class"),
     mil_min: int = 0,
     mlat: int = 0,
+    watched: int = 0,
     day: str | None = None,
     frm: str | None = Query(default=None, alias="from"),
     to: str | None = None,
@@ -138,7 +142,7 @@ async def api_tracks(
     """All tracks (one polyline per aircraft) for a time window, for the map overlay."""
     max_aircraft = max(1, min(max_aircraft, 1000))
     max_points = max(1, min(max_points, 200000))
-    where, params = _range_where("st.", q, klass, mil_min, day, frm, to, mlat)
+    where, params = _range_where("st.", q, klass, mil_min, day, frm, to, mlat, watched=watched)
     where += ["s.lat is not null", "s.lon is not null"]
     clause = " where " + " and ".join(where)
     # Step 1: pick the matching aircraft (most recent first).
@@ -153,7 +157,7 @@ async def api_tracks(
     # Step 2: fetch their points within the same window.
     placeholders = ",".join("?" * len(hexes))
     rows = db.query_rows(
-        f"""select s.hex, st.traffic_class, s.seen_at as t, s.lat, s.lon, s.alt_baro as alt
+        f"""select s.hex, st.traffic_class, st.watched, s.seen_at as t, s.lat, s.lon, s.alt_baro as alt
             from sightings s join aircraft_state st on st.hex = s.hex
             {clause} and s.hex in ({placeholders})
             order by s.hex, s.seen_at asc limit ?""",
@@ -161,7 +165,10 @@ async def api_tracks(
     )
     tracks: dict[str, dict] = {}
     for r in rows:
-        t = tracks.setdefault(r["hex"], {"hex": r["hex"], "traffic_class": r["traffic_class"], "points": []})
+        t = tracks.setdefault(r["hex"], {
+            "hex": r["hex"], "traffic_class": r["traffic_class"],
+            "watched": r["watched"], "points": [],
+        })
         t["points"].append({"t": r["t"], "lat": r["lat"], "lon": r["lon"], "alt": r["alt"]})
     return {"tracks": list(tracks.values())}
 
@@ -225,7 +232,7 @@ async def api_photo(hexid: str):
     }
 
 
-def _filter(prefix, q, klass, mil_min, mlat=0, extra_cols=()):
+def _filter(prefix, q, klass, mil_min, mlat=0, extra_cols=(), watched=0):
     """WHERE clause + params for aircraft columns. `prefix` qualifies the table
     (e.g. "" for aircraft_state, "st." when joined as st). `extra_cols` are extra
     fully-qualified columns also matched by the free-text query (e.g. enrichment)."""
@@ -248,6 +255,8 @@ def _filter(prefix, q, klass, mil_min, mlat=0, extra_cols=()):
         params.append(mil_min)
     if mlat:
         where.append(f"{prefix}mlat = 1")
+    if watched:
+        where.append(f"{prefix}watched = 1")
     return where, params
 
 
@@ -309,6 +318,82 @@ async def api_breakdown(
         tuple(params),
     )
     return {"total": (total or {}).get("n", 0), "by_class": by_class}
+
+
+def _recompute_watched():
+    """Re-match every known aircraft against the current watchlist (after edits),
+    so the UI reflects changes immediately without waiting for the next pass."""
+    con = db.connect()
+    try:
+        wl = watch.load(con)
+        rows = con.execute(
+            """select st.hex, st.reg, st.flight, st.ac_type,
+                      coalesce(ai.operator, ai.owner) as operator
+               from aircraft_state st left join aircraft_info ai on ai.hex = st.hex"""
+        ).fetchall()
+        for r in rows:
+            entry = watch.match(wl, r["hex"], r["reg"], r["flight"], r["ac_type"], r["operator"])
+            con.execute(
+                "update aircraft_state set watched=?, watch_label=? where hex=?",
+                (1 if entry else 0, (entry.get("label") or entry.get("value")) if entry else None, r["hex"]),
+            )
+    finally:
+        con.close()
+
+
+@app.get("/api/watchlist")
+async def watchlist_list():
+    return db.query_rows("select id, kind, value, label, enabled, created_at from watchlist order by id")
+
+
+@app.post("/api/watchlist")
+async def watchlist_add(item: dict = Body(...)):
+    kind = (item.get("kind") or "").strip().lower()
+    value = (item.get("value") or "").strip()
+    if kind not in watch.KINDS or not value:
+        return JSONResponse({"error": f"kind must be one of {sorted(watch.KINDS)} and value non-empty"}, status_code=400)
+    con = db.connect()
+    try:
+        con.execute(
+            "insert into watchlist (kind, value, label, enabled, created_at) values (?,?,?,1,?)",
+            (kind, value, (item.get("label") or "").strip() or None, poller.now_iso()),
+        )
+    finally:
+        con.close()
+    _recompute_watched()
+    return {"ok": True}
+
+
+@app.patch("/api/watchlist/{wid}")
+async def watchlist_toggle(wid: int, item: dict = Body(...)):
+    con = db.connect()
+    try:
+        con.execute("update watchlist set enabled=? where id=?", (1 if item.get("enabled") else 0, wid))
+    finally:
+        con.close()
+    _recompute_watched()
+    return {"ok": True}
+
+
+@app.delete("/api/watchlist/{wid}")
+async def watchlist_delete(wid: int):
+    con = db.connect()
+    try:
+        con.execute("delete from watchlist where id=?", (wid,))
+    finally:
+        con.close()
+    _recompute_watched()
+    return {"ok": True}
+
+
+@app.get("/api/watch-events")
+async def watch_events(limit: int = 100):
+    limit = max(1, min(limit, 1000))
+    return db.query_rows(
+        "select id, hex, label, kind, value, seen_at, flight, lat, lon "
+        "from watch_events order by seen_at desc limit ?",
+        (limit,),
+    )
 
 
 # Back-compat with the v1 JSON endpoints.

@@ -35,7 +35,7 @@ export default function SearchPanel({ filters, onChange, onSubmit, count, loadin
   }
   function setRange(r) { onChange({ ...filters, from: r.from, to: r.to }); }
   const nonlineActive = filters.classes.includes("__nonline__");
-  const anyFilter = filters.q || filters.classes.length || filters.milMin || filters.from || filters.to || filters.mlat;
+  const anyFilter = filters.q || filters.classes.length || filters.milMin || filters.from || filters.to || filters.mlat || filters.watched;
 
   return (
     <div className="p-4 border-b border-ink-600 space-y-3">
@@ -59,6 +59,7 @@ export default function SearchPanel({ filters, onChange, onSubmit, count, loadin
           <Chip key={c.key} active={filters.classes.includes(c.key)} onClick={() => toggleClass(c.key)}>{c.label}</Chip>
         ))}
         <Chip active={!!filters.mlat} onClick={() => onChange({ ...filters, mlat: filters.mlat ? 0 : 1 })}>MLAT</Chip>
+        <Chip active={!!filters.watched} onClick={() => onChange({ ...filters, watched: filters.watched ? 0 : 1 })}>Watched</Chip>
       </div>
 
       <div className="space-y-2">
@@ -107,7 +108,7 @@ export default function SearchPanel({ filters, onChange, onSubmit, count, loadin
       <div className="flex items-center justify-between text-xs">
         <span className="text-slate-500">{count} aircraft{rangeMode ? " in window" : ""}</span>
         <button
-          onClick={() => onChange({ q: "", classes: [], milMin: 0, from: null, to: null, mlat: 0 })}
+          onClick={() => onChange({ q: "", classes: [], milMin: 0, from: null, to: null, mlat: 0, watched: 0 })}
           disabled={!anyFilter}
           className={`px-2.5 py-1 rounded-full border transition ${
             anyFilter ? "bg-ink-700 border-ink-500 text-slate-300 hover:border-accent hover:text-accent"

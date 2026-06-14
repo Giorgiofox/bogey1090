@@ -15,7 +15,8 @@ export default function ResultsList({ rows, selected, onSelect, loading }) {
             key={r.hex}
             onClick={() => onSelect(r.hex)}
             className={`w-full text-left px-4 py-2.5 border-b border-ink-700 flex items-center gap-3
-              hover:bg-ink-700 transition ${active ? "bg-ink-700" : ""}`}
+              hover:bg-ink-700 transition ${active ? "bg-ink-700" : ""}
+              ${r.watched ? "border-l-2 border-l-amber-400 bg-amber-400/5" : ""}`}
           >
             <span
               className="shrink-0 w-12 text-center text-[10px] font-semibold py-0.5 rounded"
@@ -30,6 +31,7 @@ export default function ResultsList({ rows, selected, onSelect, loading }) {
                 </span>
                 {r.ac_type && <span className="text-xs text-slate-500">{r.ac_type}</span>}
                 {r.mlat ? <span className="text-[9px] px-1 rounded bg-amber-500/20 text-amber-300">MLAT</span> : null}
+                {r.watched ? <span className="text-[9px] px-1 rounded bg-amber-400/30 text-amber-200" title={r.watch_label || "watched"}>WATCH</span> : null}
               </span>
               <span className="block text-xs text-slate-500 truncate">
                 {r.reg ? `${r.reg} · ` : ""}{r.ac_desc || m.label}

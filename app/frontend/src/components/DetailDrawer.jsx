@@ -59,8 +59,9 @@ export default function DetailDrawer({ detail, onClose }) {
 
       <div className="p-4 overflow-y-auto space-y-4">
         <div>
-          <div className="text-lg font-semibold leading-tight flex items-center gap-2">
+          <div className="text-lg font-semibold leading-tight flex items-center gap-2 flex-wrap">
             {title}
+            {state.watched ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400/30 text-amber-200" title={state.watch_label || ""}>WATCHED{state.watch_label ? `: ${state.watch_label}` : ""}</span> : null}
             {state.mlat ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">MLAT</span> : null}
           </div>
           <div className="text-xs text-slate-500 font-mono">

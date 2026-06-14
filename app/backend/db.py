@@ -14,6 +14,8 @@ _MIGRATION_COLUMNS = {
         ("db_flags", "integer"),
         ("traffic_class", "text"),
         ("mlat", "integer"),
+        ("watched", "integer"),
+        ("watch_label", "text"),
     ],
     "aircraft_state": [
         ("reg", "text"),
@@ -22,6 +24,8 @@ _MIGRATION_COLUMNS = {
         ("db_flags", "integer"),
         ("traffic_class", "text"),
         ("mlat", "integer"),
+        ("watched", "integer"),
+        ("watch_label", "text"),
     ],
 }
 
@@ -120,6 +124,30 @@ def _create_schema(con: sqlite3.Connection) -> None:
           fetched_at text,
           not_found integer not null default 0
         );
+
+        create table if not exists watchlist (
+          id integer primary key autoincrement,
+          kind text not null,
+          value text not null,
+          label text,
+          enabled integer not null default 1,
+          created_at text
+        );
+
+        create table if not exists watch_events (
+          id integer primary key autoincrement,
+          hex text not null,
+          watch_id integer,
+          label text,
+          kind text,
+          value text,
+          seen_at text not null,
+          flight text,
+          lat real,
+          lon real
+        );
+        create index if not exists idx_watch_events_seen on watch_events(seen_at);
+        create index if not exists idx_watch_events_hex on watch_events(hex, seen_at);
 
         create table if not exists logger_status (
           key text primary key,

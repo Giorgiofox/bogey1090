@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as api from "./api.js";
 import { NON_AIRLINE } from "./classes.js";
 import { useSettings } from "./useSettings.js";
-import { GearIcon, CalendarIcon, PlaneIcon } from "./icons.jsx";
+import { GearIcon, CalendarIcon, PlaneIcon, EyeIcon } from "./icons.jsx";
 import { fmtLocal } from "./time.js";
 import SearchPanel from "./components/SearchPanel.jsx";
 import ResultsList from "./components/ResultsList.jsx";
@@ -10,6 +10,7 @@ import MapView from "./components/MapView.jsx";
 import DetailDrawer from "./components/DetailDrawer.jsx";
 import CalendarPanel from "./components/CalendarPanel.jsx";
 import SettingsPanel from "./components/SettingsPanel.jsx";
+import WatchlistPanel from "./components/WatchlistPanel.jsx";
 
 function resolveClasses(classes) {
   return classes.includes("__nonline__")
@@ -29,14 +30,19 @@ export default function App() {
   const [multiTracks, setMultiTracks] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showWatchlist, setShowWatchlist] = useState(false);
   const seq = useRef(0);
+  const lastEventId = useRef(null);
 
   const rangeMode = !!(filters.from && filters.to);
 
   const runSearch = useCallback(async (f) => {
     const id = ++seq.current;
     setLoading(true);
-    const args = { q: f.q, classes: resolveClasses(f.classes), milMin: f.milMin, from: f.from, to: f.to };
+    const args = {
+      q: f.q, classes: resolveClasses(f.classes), milMin: f.milMin,
+      mlat: f.mlat, watched: f.watched, from: f.from, to: f.to,
+    };
     try {
       const rows = await api.search(args);
       if (id !== seq.current) return;
@@ -57,11 +63,33 @@ export default function App() {
   useEffect(() => {
     runSearch(filters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.classes, filters.milMin, filters.from, filters.to]);
+  }, [filters.classes, filters.milMin, filters.mlat, filters.watched, filters.from, filters.to]);
 
   useEffect(() => {
     api.getStatus().then(setStatus).catch(() => {});
     const t = setInterval(() => api.getStatus().then(setStatus).catch(() => {}), 15000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Notify when a watched aircraft passes (browser notification, if permitted).
+  useEffect(() => {
+    async function poll() {
+      const events = await api.getWatchEvents(10).catch(() => []);
+      if (!events.length) return;
+      const newest = events[0].id;
+      if (lastEventId.current === null) { lastEventId.current = newest; return; }
+      const fresh = events.filter((e) => e.id > lastEventId.current);
+      lastEventId.current = newest;
+      if (fresh.length && "Notification" in window && Notification.permission === "granted") {
+        for (const e of fresh.slice(0, 3)) {
+          new Notification("Watched aircraft", {
+            body: `${e.label || e.value} - ${e.flight || e.hex.toUpperCase()} at ${fmtLocal(e.seen_at)}`,
+          });
+        }
+      }
+    }
+    poll();
+    const t = setInterval(poll, 20000);
     return () => clearInterval(t);
   }, []);
 
@@ -110,6 +138,10 @@ export default function App() {
         <span className="font-semibold tracking-tight">Bogey1090</span>
         <span className="text-xs text-slate-500">ADS-B Logger</span>
         <div className="flex-1" />
+        <button onClick={() => setShowWatchlist(true)}
+          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-ink-700 border border-ink-500 text-slate-300 hover:border-accent hover:text-accent transition">
+          <EyeIcon /> Watchlist
+        </button>
         <button onClick={() => setShowCalendar(true)}
           className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-ink-700 border border-ink-500 text-slate-300 hover:border-accent hover:text-accent transition">
           <CalendarIcon /> Calendar
@@ -168,6 +200,13 @@ export default function App() {
       {showSettings && (
         <SettingsPanel settings={settings} receiver={status?.receiver}
           onSave={setSettings} onClose={() => setShowSettings(false)} />
+      )}
+      {showWatchlist && (
+        <WatchlistPanel
+          onClose={() => setShowWatchlist(false)}
+          onChanged={() => runSearch(filters)}
+          onPickHex={selectAircraft}
+        />
       )}
     </div>
   );

@@ -52,3 +52,12 @@ export function ChevronLeft(p) {
 export function ChevronRight(p) {
   return <svg {...base} {...p}><path d="M9 18l6-6-6-6" /></svg>;
 }
+
+export function EyeIcon(p) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
