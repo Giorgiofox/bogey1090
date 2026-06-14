@@ -67,10 +67,9 @@ export default function DetailDrawer({ detail, onClose }) {
           </div>
           <div className="text-xs text-slate-500 font-mono flex items-center gap-1.5">
             {hexCountry(state.hex) && (
-              <span className="border border-ink-600 bg-ink-900 grid place-items-center overflow-hidden"
-                style={{ width: 20, height: 14 }} title={countryName(hexCountry(state.hex))}>
+              <span className="grid place-items-center" style={{ width: 20, height: 14 }} title={countryName(hexCountry(state.hex))}>
                 <img src={flagUrl(hexCountry(state.hex))} alt=""
-                  style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                  style={{ maxWidth: "100%", maxHeight: "100%", display: "block" }} />
               </span>
             )}
             {state.hex.toUpperCase()}{(state.ac_type || raw.t) ? ` · ${state.ac_type || raw.t}` : ""}
