@@ -161,7 +161,6 @@ function ExternalLinks({ hex, reg, flight }) {
     ["JetPhotos", reg ? `https://www.jetphotos.com/registration/${reg}` : `https://www.jetphotos.com/photo/keyword/${hex}`],
     ["Flightradar24", reg ? `https://www.flightradar24.com/data/aircraft/${reg}` : f ? `https://www.flightradar24.com/data/flights/${f}` : `https://www.flightradar24.com/${hex}`],
     ["RadarBox", f ? `https://www.radarbox.com/data/flights/${f}` : reg ? `https://www.radarbox.com/data/registration/${reg}` : null],
-    ["Flightera", f ? `https://www.flightera.net/en/flight/${f}` : reg ? `https://www.flightera.net/en/planet/${reg}` : null],
     ["ADSBexchange", `https://globe.adsbexchange.com/?icao=${hex}`],
     ["FlightAware", f ? `https://flightaware.com/live/flight/${f}` : `https://flightaware.com/live/modes/${hex}/redirect`],
     ["airfleets", reg ? `https://www.airfleets.net/recherche/?key=${reg}` : null],
