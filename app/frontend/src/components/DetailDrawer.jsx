@@ -24,14 +24,15 @@ export default function DetailDrawer({ detail, onClose }) {
   const m = classMeta(state.traffic_class);
   const title = state.flight || info?.registration || state.reg || state.hex.toUpperCase();
   const photo = info?.photo_url || info?.photo_thumb;
+  const hasPhoto = photo && imgOk;
   const alt = state.alt_baro === "ground" ? "On ground" : (num(state.alt_baro) ? `${state.alt_baro} ft` : null);
   const vrate = raw.baro_rate ?? raw.geom_rate;
 
   return (
     <div className="absolute top-3 right-3 bottom-3 w-[360px] bg-ink-800/95 backdrop-blur
                     border border-ink-600 rounded-xl shadow-2xl flex flex-col overflow-hidden">
-      <div className="relative shrink-0">
-        {photo && imgOk ? (
+      {hasPhoto ? (
+        <div className="relative shrink-0">
           <a href={info?.photo_link || photo} target="_blank" rel="noreferrer" title="Open full-resolution photo">
             <img
               src={photo} alt={title} referrerPolicy="no-referrer" loading="lazy"
@@ -39,24 +40,34 @@ export default function DetailDrawer({ detail, onClose }) {
               className="w-full h-44 object-cover hover:opacity-90 transition"
             />
           </a>
-        ) : (
-          <div className="w-full h-44 grid place-items-center bg-ink-700 text-ink-500">
-            <PlaneIcon width={48} height={48} />
-          </div>
-        )}
-        <button onClick={onClose}
-          className="absolute top-2 right-2 w-7 h-7 grid place-items-center rounded-full bg-black/50 text-slate-200 hover:bg-black/70">
-          <CloseIcon width={14} height={14} />
-        </button>
-        <span className="absolute bottom-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded"
-          style={{ background: `${m.color}cc`, color: "#0a0e14" }}>{m.label}</span>
-        {info?.photographer && (
-          <a href={info.photo_link} target="_blank" rel="noreferrer"
-            className="absolute bottom-1 right-2 text-[9px] text-white/70 hover:text-white">
-            © {info.photographer} / planespotters.net
-          </a>
-        )}
-      </div>
+          <button onClick={onClose}
+            className="absolute top-2 right-2 w-7 h-7 grid place-items-center rounded-full bg-black/50 text-slate-200 hover:bg-black/70">
+            <CloseIcon width={14} height={14} />
+          </button>
+          <span className="absolute bottom-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded"
+            style={{ background: `${m.color}cc`, color: "#0a0e14" }}>{m.label}</span>
+          {info?.photographer && (
+            <a href={info.photo_link} target="_blank" rel="noreferrer"
+              className="absolute bottom-1 right-2 text-[9px] text-white/70 hover:text-white">
+              © {info.photographer} / planespotters.net
+            </a>
+          )}
+        </div>
+      ) : (
+        // No photo: collapse the photo area to a slim bar.
+        <div className="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-ink-600">
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded"
+            style={{ background: `${m.color}cc`, color: "#0a0e14" }}>{m.label}</span>
+          <span className="text-[11px] text-slate-500 truncate">
+            {detail.enriching ? "Loading photo…" : "No photo in free databases — try the links below"}
+          </span>
+          <span className="flex-1" />
+          <button onClick={onClose}
+            className="w-7 h-7 grid place-items-center rounded-full bg-ink-700 text-slate-300 hover:bg-ink-600">
+            <CloseIcon width={14} height={14} />
+          </button>
+        </div>
+      )}
 
       <div className="p-4 overflow-y-auto space-y-4">
         <div>
@@ -149,9 +160,12 @@ function ExternalLinks({ hex, reg, flight }) {
     ["Planespotters", `https://www.planespotters.net/hex/${hex}`],
     ["JetPhotos", reg ? `https://www.jetphotos.com/registration/${reg}` : `https://www.jetphotos.com/photo/keyword/${hex}`],
     ["Flightradar24", reg ? `https://www.flightradar24.com/data/aircraft/${reg}` : f ? `https://www.flightradar24.com/data/flights/${f}` : `https://www.flightradar24.com/${hex}`],
+    ["RadarBox", f ? `https://www.radarbox.com/data/flights/${f}` : reg ? `https://www.radarbox.com/data/registration/${reg}` : null],
+    ["Flightera", f ? `https://www.flightera.net/en/flight/${f}` : reg ? `https://www.flightera.net/en/planet/${reg}` : null],
     ["ADSBexchange", `https://globe.adsbexchange.com/?icao=${hex}`],
     ["FlightAware", f ? `https://flightaware.com/live/flight/${f}` : `https://flightaware.com/live/modes/${hex}/redirect`],
-  ];
+    ["airfleets", reg ? `https://www.airfleets.net/recherche/?key=${reg}` : null],
+  ].filter(([, url]) => url);
   return (
     <div>
       <div className="text-[10px] uppercase tracking-wide text-accent/70 mb-1.5">Photos & info</div>
