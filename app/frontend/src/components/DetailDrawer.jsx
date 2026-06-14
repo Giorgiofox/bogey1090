@@ -2,6 +2,7 @@ import { useState } from "react";
 import { classMeta } from "../classes.js";
 import { PlaneIcon, CloseIcon } from "../icons.jsx";
 import { fmtFull, tzName } from "../time.js";
+import { hexCountry, countryName, flagUrl } from "../flags.js";
 
 const CATEGORY = {
   A0: "No info", A1: "Light (<15.5t)", A2: "Small (15.5-75t)", A3: "Large (75-300t)",
@@ -64,7 +65,11 @@ export default function DetailDrawer({ detail, onClose }) {
             {state.watched ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400/30 text-amber-200" title={state.watch_label || ""}>WATCHED{state.watch_label ? `: ${state.watch_label}` : ""}</span> : null}
             {state.mlat ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">MLAT</span> : null}
           </div>
-          <div className="text-xs text-slate-500 font-mono">
+          <div className="text-xs text-slate-500 font-mono flex items-center gap-1.5">
+            {hexCountry(state.hex) && (
+              <img src={flagUrl(hexCountry(state.hex))} alt="" title={countryName(hexCountry(state.hex))}
+                width={18} height={13} className="rounded-sm" />
+            )}
             {state.hex.toUpperCase()}{(state.ac_type || raw.t) ? ` · ${state.ac_type || raw.t}` : ""}
           </div>
         </div>

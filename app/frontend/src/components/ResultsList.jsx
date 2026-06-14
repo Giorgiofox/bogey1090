@@ -1,5 +1,6 @@
 import { classMeta } from "../classes.js";
 import { fmtLocal } from "../time.js";
+import { hexCountry, countryName, flagUrl } from "../flags.js";
 
 export default function ResultsList({ rows, selected, onSelect, loading }) {
   if (!loading && rows.length === 0) {
@@ -10,6 +11,7 @@ export default function ResultsList({ rows, selected, onSelect, loading }) {
       {rows.map((r) => {
         const m = classMeta(r.traffic_class);
         const active = r.hex === selected;
+        const iso = hexCountry(r.hex);
         return (
           <button
             key={r.hex}
@@ -18,11 +20,19 @@ export default function ResultsList({ rows, selected, onSelect, loading }) {
               hover:bg-ink-700 transition ${active ? "bg-ink-700" : ""}
               ${r.watched ? "border-l-2 border-l-amber-400 bg-amber-400/5" : ""}`}
           >
-            <span
-              className="shrink-0 w-12 text-center text-[10px] font-semibold py-0.5 rounded"
-              style={{ background: `${m.color}22`, color: m.color }}
-            >
-              {m.tag}
+            <span className="shrink-0 flex items-center gap-1.5">
+              <span
+                className="w-12 text-center text-[10px] font-semibold py-0.5 rounded"
+                style={{ background: `${m.color}22`, color: m.color }}
+              >
+                {m.tag}
+              </span>
+              {iso ? (
+                <img src={flagUrl(iso)} alt={iso} title={countryName(iso)} width={20} height={15}
+                  loading="lazy" className="rounded-sm shrink-0" />
+              ) : (
+                <span className="w-5" />
+              )}
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex items-baseline gap-2">
