@@ -156,14 +156,20 @@ export default function DetailDrawer({ detail, onClose }) {
 
 function ExternalLinks({ hex, reg, flight }) {
   const f = flight ? flight.trim() : null;
+  const gq = encodeURIComponent(reg ? `${reg} aircraft` : f ? `${f} flight` : `${hex} mode-s aircraft`);
   const links = [
     ["Planespotters", `https://www.planespotters.net/hex/${hex}`],
     ["JetPhotos", reg ? `https://www.jetphotos.com/registration/${reg}` : `https://www.jetphotos.com/photo/keyword/${hex}`],
     ["Flightradar24", reg ? `https://www.flightradar24.com/data/aircraft/${reg}` : f ? `https://www.flightradar24.com/data/flights/${f}` : `https://www.flightradar24.com/${hex}`],
     ["RadarBox", f ? `https://www.radarbox.com/data/flights/${f}` : reg ? `https://www.radarbox.com/data/registration/${reg}` : null],
+    ["planefinder", f ? `https://planefinder.net/flight/${f}` : null],
     ["ADSBexchange", `https://globe.adsbexchange.com/?icao=${hex}`],
+    ["adsb.fi", `https://globe.adsb.fi/?icao=${hex}`],
     ["FlightAware", f ? `https://flightaware.com/live/flight/${f}` : `https://flightaware.com/live/modes/${hex}/redirect`],
     ["airfleets", reg ? `https://www.airfleets.net/recherche/?key=${reg}` : null],
+    ["planelogger", reg ? `https://www.planelogger.com/Aircraft/Registration/${reg}` : null],
+    ["rzjets", reg ? `https://rzjets.net/aircraft/?reg=${reg}` : null],
+    ["Google", `https://www.google.com/search?q=${gq}`],
   ].filter(([, url]) => url);
   return (
     <div>
