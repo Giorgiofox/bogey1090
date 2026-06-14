@@ -38,7 +38,7 @@ const RANGES = [
   [0x478000, 0x47ffff, "NO"], [0x480000, 0x487fff, "NL"], [0x488000, 0x48ffff, "PL"],
   [0x490000, 0x497fff, "PT"], [0x498000, 0x49ffff, "CZ"], [0x4a0000, 0x4a7fff, "RO"],
   [0x4a8000, 0x4affff, "SE"], [0x4b0000, 0x4b7fff, "CH"], [0x4b8000, 0x4bffff, "TR"],
-  [0x4c0000, 0x4c7fff, "RS"], [0x4c8000, 0x4cffff, "CY"], [0x4ca000, 0x4cafff, "IE"],
+  [0x4c0000, 0x4c7fff, "RS"], [0x4c8000, 0x4c83ff, "CY"], [0x4ca000, 0x4cafff, "IE"],
   [0x4cc000, 0x4ccfff, "IS"], [0x4d0000, 0x4d03ff, "LU"], [0x4d2000, 0x4d2fff, "MT"],
   [0x500000, 0x5003ff, "SM"], [0x501000, 0x5013ff, "AL"], [0x501c00, 0x501fff, "HR"],
   [0x502c00, 0x502fff, "LV"], [0x503c00, 0x503fff, "LT"], [0x504c00, 0x504fff, "MD"],
@@ -83,10 +83,13 @@ export function hexCountry(hex) {
   if (!hex) return null;
   const n = parseInt(hex, 16);
   if (!Number.isFinite(n)) return null;
+  // Pick the narrowest matching range, so a specific country sub-block wins over a
+  // broader one regardless of table order.
+  let best = null, bestSpan = Infinity;
   for (const [a, b, iso] of RANGES) {
-    if (n >= a && n <= b) return iso;
+    if (n >= a && n <= b && b - a < bestSpan) { best = iso; bestSpan = b - a; }
   }
-  return null;
+  return best;
 }
 
 export function countryName(iso) {

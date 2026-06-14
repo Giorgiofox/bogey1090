@@ -29,7 +29,7 @@ export default function ResultsList({ rows, selected, onSelect, loading }) {
               </span>
               {iso ? (
                 <img src={flagUrl(iso)} alt={iso} title={countryName(iso)} width={20} height={15}
-                  loading="lazy" className="rounded-sm shrink-0" />
+                  loading="lazy" className="shrink-0 border border-ink-600 block" />
               ) : (
                 <span className="w-5" />
               )}

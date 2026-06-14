@@ -68,7 +68,7 @@ export default function DetailDrawer({ detail, onClose }) {
           <div className="text-xs text-slate-500 font-mono flex items-center gap-1.5">
             {hexCountry(state.hex) && (
               <img src={flagUrl(hexCountry(state.hex))} alt="" title={countryName(hexCountry(state.hex))}
-                width={18} height={13} className="rounded-sm" />
+                width={18} height={13} className="border border-ink-600 block" />
             )}
             {state.hex.toUpperCase()}{(state.ac_type || raw.t) ? ` · ${state.ac_type || raw.t}` : ""}
           </div>
