@@ -27,13 +27,13 @@ export default function ResultsList({ rows, selected, onSelect, loading }) {
               >
                 {m.tag}
               </span>
-              <span className="w-6 flex justify-center shrink-0">
-                {iso && (
-                  <img src={flagUrl(iso)} alt={iso} title={countryName(iso)}
-                    loading="lazy" className="border border-ink-600 block"
-                    style={{ height: 14, width: "auto" }} />
-                )}
-              </span>
+              {iso && (
+                <span className="shrink-0 border border-ink-600 bg-ink-900 grid place-items-center overflow-hidden"
+                  style={{ width: 22, height: 15 }} title={countryName(iso)}>
+                  <img src={flagUrl(iso)} alt={iso} loading="lazy"
+                    style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                </span>
+              )}
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex items-baseline gap-2">
