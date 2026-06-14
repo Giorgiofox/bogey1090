@@ -21,13 +21,13 @@ _AIRLINE_CALLSIGN = re.compile(r"^[A-Z]{3}\d[A-Z0-9]*$")
 # Business jets and turboprops keep their own types and stay out of this set.
 _AIRLINER_TYPE = re.compile(
     r"^("
-    r"A3\d{2}|A(19|20|21)N|"          # Airbus A300/310/318-321, A330/340/350/380, neo
-    r"B7\d{2}|B3[789]M|B3XM|"          # Boeing 717-787, 737 MAX
+    r"A3[0-9][0-9A-Z]|A(19|20|21)N|"  # Airbus A300/310/318-321/330/340/350(A35K)/380, neo
+    r"B7[0-9][0-9A-Z]|B3[789]M|B3XM|"  # Boeing 717-787 incl B77L/B77W/B78X, 737 MAX
     r"BCS[13]|"                        # Airbus A220 (C Series)
-    r"E1[79][05]|E29[05]|"             # Embraer E-Jets / E2
+    r"E1[79][05]|E29[05]|E7[05][LS]|"  # Embraer E-Jets / E2
     r"CRJ[0-9X]|"                      # Bombardier CRJ
     r"AT[0-9]{2}|DH8[A-D]|"            # ATR, Dash 8
-    r"SU95|RJ1H|RJ85|F100|F70|MD8\d|MD90"
+    r"SU95|RJ1H|RJ85|F100|F70|MD8[0-9]|MD90"
     r")$"
 )
 
