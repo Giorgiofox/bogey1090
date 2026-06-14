@@ -61,9 +61,13 @@ async def healthz():
     return {"ok": True, **_status()}
 
 
-def _range_where(prefix, q, klass, mil_min, day, frm, to, mlat=0):
+# Enrichment columns also matched by free-text search (model name, manufacturer…).
+AI_COLS = ["ai.type", "ai.manufacturer", "ai.icao_type", "ai.operator", "ai.owner"]
+
+
+def _range_where(prefix, q, klass, mil_min, day, frm, to, mlat=0, extra_cols=()):
     """Filter over a sightings/state join for a day or [from,to] time window."""
-    where, params = _filter(prefix, q, klass, mil_min, mlat)
+    where, params = _filter(prefix, q, klass, mil_min, mlat, extra_cols)
     if day:
         where.append("substr(s.seen_at,1,10) = ?")
         params.append(day)
@@ -91,7 +95,7 @@ async def api_search(
     if day or frm or to:
         # Aircraft seen in the window; class/identity from authoritative aircraft_state,
         # timing/counts from that window's sightings. Filters apply to the state class.
-        where, params = _range_where("st.", q, klass, mil_min, day, frm, to, mlat)
+        where, params = _range_where("st.", q, klass, mil_min, day, frm, to, mlat, AI_COLS)
         clause = " where " + " and ".join(where)
         return db.query_rows(
             f"""select s.hex, st.flight, st.reg, st.ac_type, st.ac_desc, st.traffic_class,
@@ -100,19 +104,21 @@ async def api_search(
                        max(s.gs) as gs, max(s.squawk) as squawk, max(s.category) as category,
                        min(s.seen_at) as first_seen_at, max(s.seen_at) as last_seen_at,
                        count(*) as samples
-                from sightings s join aircraft_state st on st.hex = s.hex{clause}
+                from sightings s join aircraft_state st on st.hex = s.hex
+                  left join aircraft_info ai on ai.hex = s.hex{clause}
                 group by s.hex order by last_seen_at desc limit ?""",
             tuple(params) + (limit,),
         )
     # Default: latest state per aircraft.
-    where, params = _filter("", q, klass, mil_min, mlat)
+    where, params = _filter("st.", q, klass, mil_min, mlat, AI_COLS)
     clause = (" where " + " and ".join(where)) if where else ""
     return db.query_rows(
-        f"""select hex, flight, reg, ac_type, ac_desc, traffic_class, military_score,
-                  military_reasons, db_flags, mlat, lat, lon, alt_baro, gs, squawk, category,
-                  first_seen_at, last_seen_at, samples
-           from aircraft_state{clause}
-           order by last_seen_at desc limit ?""",
+        f"""select st.hex, st.flight, st.reg, st.ac_type, st.ac_desc, st.traffic_class,
+                  st.military_score, st.military_reasons, st.db_flags, st.mlat, st.lat, st.lon,
+                  st.alt_baro, st.gs, st.squawk, st.category,
+                  st.first_seen_at, st.last_seen_at, st.samples
+           from aircraft_state st left join aircraft_info ai on ai.hex = st.hex{clause}
+           order by st.last_seen_at desc limit ?""",
         tuple(params) + (limit,),
     )
 
@@ -219,15 +225,17 @@ async def api_photo(hexid: str):
     }
 
 
-def _filter(prefix, q, klass, mil_min, mlat=0):
+def _filter(prefix, q, klass, mil_min, mlat=0, extra_cols=()):
     """WHERE clause + params for aircraft columns. `prefix` qualifies the table
-    (e.g. "" for aircraft_state, "st." when joined as st)."""
+    (e.g. "" for aircraft_state, "st." when joined as st). `extra_cols` are extra
+    fully-qualified columns also matched by the free-text query (e.g. enrichment)."""
     where, params = [], []
     if q:
         like = f"%{q.strip().upper()}%"
-        cols = ["hex", "flight", "reg", "ac_type", "ac_desc"]
+        cols = [f"{prefix}{c}" for c in ("hex", "flight", "reg", "ac_type", "ac_desc")]
+        cols += list(extra_cols)
         where.append("(" + " or ".join(
-            f"upper(coalesce({prefix}{c},'')) like ?" for c in cols
+            f"upper(coalesce({c},'')) like ?" for c in cols
         ) + ")")
         params += [like] * len(cols)
     if klass:
