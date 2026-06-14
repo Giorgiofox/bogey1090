@@ -28,8 +28,9 @@ export default function ResultsList({ rows, selected, onSelect, loading }) {
                 {m.tag}
               </span>
               {iso ? (
-                <img src={flagUrl(iso)} alt={iso} title={countryName(iso)} width={20} height={15}
-                  loading="lazy" className="shrink-0 border border-ink-600 block" />
+                <img src={flagUrl(iso)} alt={iso} title={countryName(iso)}
+                  loading="lazy" className="shrink-0 border border-ink-600 block"
+                  style={{ width: 20, height: 15, objectFit: "cover" }} />
               ) : (
                 <span className="w-5" />
               )}
