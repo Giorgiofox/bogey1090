@@ -97,5 +97,7 @@ export function countryName(iso) {
 }
 
 export function flagUrl(iso) {
-  return iso ? `https://flagcdn.com/20x15/${iso.toLowerCase()}.png` : null;
+  // Use a width-based size: flagcdn's "WxH" sizes (e.g. 20x15) are WAVING thumbnails
+  // with transparent corners; the "wNN" sizes are flat rectangles. Render at 20px via CSS.
+  return iso ? `https://flagcdn.com/w40/${iso.toLowerCase()}.png` : null;
 }
