@@ -17,6 +17,20 @@ DBFLAG_LADD = 0x8
 # Airline callsign: 3 letters + 1..4 digits/alphanumerics (e.g. RYR1234, AZA56G).
 _AIRLINE_CALLSIGN = re.compile(r"^[A-Z]{3}\d[A-Z0-9]*$")
 
+# Mainline airliner ICAO type codes (Airbus/Boeing/Embraer/CRJ/ATR/Dash/etc.).
+# Business jets and turboprops keep their own types and stay out of this set.
+_AIRLINER_TYPE = re.compile(
+    r"^("
+    r"A3\d{2}|A(19|20|21)N|"          # Airbus A300/310/318-321, A330/340/350/380, neo
+    r"B7\d{2}|B3[789]M|B3XM|"          # Boeing 717-787, 737 MAX
+    r"BCS[13]|"                        # Airbus A220 (C Series)
+    r"E1[79][05]|E29[05]|"             # Embraer E-Jets / E2
+    r"CRJ[0-9X]|"                      # Bombardier CRJ
+    r"AT[0-9]{2}|DH8[A-D]|"            # ATR, Dash 8
+    r"SU95|RJ1H|RJ85|F100|F70|MD8\d|MD90"
+    r")$"
+)
+
 
 @dataclass
 class Meta:
@@ -95,6 +109,10 @@ def _looks_like_airline(flight: str) -> bool:
     return bool(_AIRLINE_CALLSIGN.match(flight))
 
 
+def _is_airliner_type(ac_type: str | None) -> bool:
+    return bool(ac_type and _AIRLINER_TYPE.match(ac_type.upper()))
+
+
 def traffic_class(aircraft: dict, score: int, ac_type: str | None, ac_desc: str | None) -> str:
     """Assign a traffic class. Priority: military > emergency > hems > helicopter
     > airline > ga. Airline detection is heuristic here and refined by enrichment."""
@@ -115,8 +133,11 @@ def traffic_class(aircraft: dict, score: int, ac_type: str | None, ac_desc: str 
         return "helicopter"
     if _looks_like_airline(flight):
         return "airline"
-    # Large/heavy fixed-wing (ADS-B category A3/A4/A5) is virtually always commercial,
-    # even when the callsign is momentarily missing - keep it out of non-airline.
+    # A mainline airliner type code (e.g. A320, B38M) means airline even when the
+    # callsign and emitter category are momentarily absent.
+    if _is_airliner_type(ac_type):
+        return "airline"
+    # Large/heavy fixed-wing (ADS-B category A3/A4/A5) is virtually always commercial.
     if aircraft.get("category") in {"A3", "A4", "A5"}:
         return "airline"
     return "ga"
